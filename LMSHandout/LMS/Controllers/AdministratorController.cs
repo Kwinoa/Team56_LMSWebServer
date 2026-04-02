@@ -161,25 +161,24 @@ namespace LMS.Controllers
         /// true otherwise.</returns>
         public IActionResult CreateClass(string subject, int number, string season, int year, DateTime start, DateTime end, string location, string instructor)
         {
-            if (!db.Classes.Any(c => (c.Start == TimeOnly.FromDateTime(start) && c.End == TimeOnly.FromDateTime(end) && c.Location == location) || (c.Course.Number == number && c.Semester == season && c.Year == year) ) )
+            if (!db.Classes.Any(c => (c.Start == TimeOnly.FromDateTime(start) && c.End == TimeOnly.FromDateTime(end) && c.Location == location) || (c.Course.Number == number && c.Semester == season && c.Year == (uint)year)))
             {
-                var class = new Class
+                var newClass = new Class
                 {
                     Year = (uint)year,
                     Semester = season,
-                    Location = Location,
+                    Location = location,
                     Start = TimeOnly.FromDateTime(start),
                     End = TimeOnly.FromDateTime(end),
-                    ProfessorId = instructor,
+                    ProfessorUid = instructor,
                     CourseId = db.Courses.Where(c => c.Subject == subject && c.Number == number).Select(c => c.CourseId).FirstOrDefault()
-                    Number = (short)number,
-                    Name = name
                 };
-                db.Classes.Add(class);
+                db.Classes.Add(newClass);
                 db.SaveChanges();
-                return Json(new { success = true});
+                return Json(new { success = true });
             }
-            return Json(new { success = false});
+            return Json(new { success = false });
+        }
         }
 
 
