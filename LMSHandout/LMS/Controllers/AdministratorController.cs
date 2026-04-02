@@ -76,8 +76,15 @@ namespace LMS.Controllers
         /// <returns>The JSON result</returns>
         public IActionResult GetCourses(string subject)
         {
+            var query = from c in db.Courses
+                        where c.Subject == subject
+                        select new
+                        {
+                            number = c.Number,
+                            name = c.Name
+                        };
             
-            return Json(null);
+            return Json(query.ToArray());
         }
 
         /// <summary>
