@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Threading.Tasks;
 using LMS.Models.LMSModels;
@@ -61,8 +62,8 @@ namespace LMS.Controllers
                 db.SaveChanges();
                 return Json(new { success = true });
             }
-            
-            return Json(new { success = false});
+
+            return Json(new { success = false });
         }
 
 
@@ -83,7 +84,7 @@ namespace LMS.Controllers
                             number = c.Number,
                             name = c.Name
                         };
-            
+
             return Json(query.ToArray());
         }
 
@@ -98,9 +99,16 @@ namespace LMS.Controllers
         /// <returns>The JSON result</returns>
         public IActionResult GetProfessors(string subject)
         {
-            
-            return Json(null);
-            
+            var query = from p in db.Professors
+                        where p.Subject == subject
+                        select new
+                        {
+                            lname = p.LastName,
+                            fname = p.FirstName,
+                            uid = p.UId
+                        };
+
+            return Json(query.ToArray());
         }
 
 
@@ -115,7 +123,19 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = true/false}.
         /// false if the course already exists, true otherwise.</returns>
         public IActionResult CreateCourse(string subject, int number, string name)
-        {           
+        {
+            if (!db.Courses.Any(c => c.Subject == subject && c.Number == number))
+            {
+                var course = new Course
+                {
+                    Subject = subject,
+                    Number = (short)number,
+                    Name = name
+                };
+                db.Courses.Add(course);
+                db.SaveChanges();
+                return Json(new { success = true });
+            }
             return Json(new { success = false });
         }
 
@@ -138,7 +158,11 @@ namespace LMS.Controllers
         /// a Class offering of the same Course in the same Semester,
         /// true otherwise.</returns>
         public IActionResult CreateClass(string subject, int number, string season, int year, DateTime start, DateTime end, string location, string instructor)
-        {            
+        {
+            if (!db.Classes.Any(c => (c.Start == TimeOnly.FromDateTime(start) && c.End == TimeOnly.FromDateTime(end) && c.Location == location) || () ) )
+            {
+                var class = 
+        }
             return Json(new { success = false});
         }
 
