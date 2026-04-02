@@ -5,8 +5,10 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CodeAnalysis;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 [assembly: InternalsVisibleTo( "LMSControllerTests" )]
@@ -159,10 +161,24 @@ namespace LMS.Controllers
         /// true otherwise.</returns>
         public IActionResult CreateClass(string subject, int number, string season, int year, DateTime start, DateTime end, string location, string instructor)
         {
-            if (!db.Classes.Any(c => (c.Start == TimeOnly.FromDateTime(start) && c.End == TimeOnly.FromDateTime(end) && c.Location == location) || () ) )
+            if (!db.Classes.Any(c => (c.Start == TimeOnly.FromDateTime(start) && c.End == TimeOnly.FromDateTime(end) && c.Location == location) || (c.Course.Number == number && c.Semester == season && c.Year == year) ) )
             {
-                var class = 
-        }
+                var class = new Class
+                {
+                    Year = (uint)year,
+                    Semester = season,
+                    Location = Location,
+                    Start = TimeOnly.FromDateTime(start),
+                    End = TimeOnly.FromDateTime(end),
+                    ProfessorId = instructor,
+                    CourseId = db.Courses.Where(c => c.Subject == subject && c.Number == number).Select(c => c.CourseId).FirstOrDefault()
+                    Number = (short)number,
+                    Name = name
+                };
+                db.Classes.Add(class);
+                db.SaveChanges();
+                return Json(new { success = true});
+            }
             return Json(new { success = false});
         }
 
