@@ -54,8 +54,21 @@ namespace LMS.Controllers
         /// </summary>
         /// <returns>The JSON array</returns>
         public IActionResult GetCatalog()
-        {            
-            return Json(null);
+        {
+            var query = from d in db.Departments
+                         select new
+                         {
+                             dname = d.Name,
+                             subject = d.Subject,
+                             courses = (from c in db.Courses
+                                        select new
+                                        {
+                                            number = c.Number,
+                                            cname = c.Name
+                                        })
+                         };
+
+            return Json(query.ToArray());
         }
 
         /// <summary>
@@ -73,8 +86,26 @@ namespace LMS.Controllers
         /// <param name="number">The course number, as in 5530</param>
         /// <returns>The JSON array</returns>
         public IActionResult GetClassOfferings(string subject, int number)
-        {            
-            return Json(null);
+        {
+            var query = from c in db.Courses
+                        where c.Subject == subject && c.Number == number
+                        join ca in db.Classes
+                        on c.CourseId equals ca.CourseId
+                        select new
+                        {
+                            season = ca.Semester,
+                            year = ca.Year,
+                            location = ca.Location,
+                            start = ca.Start,
+                            end = ca.End,
+                            fname = (from p in db.Professors
+                                     where p.UId == ca.ProfessorUid
+                                     select p.FirstName),
+                            lname = (from p in db.Professors
+                                     where p.UId == ca.ProfessorUid
+                                     select p.LastName)
+                        };
+            return Json(query.ToArray());
         }
 
         /// <summary>
@@ -110,7 +141,21 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student who submitted it</param>
         /// <returns>The submission text</returns>
         public IActionResult GetSubmissionText(string subject, int num, string season, int year, string category, string asgname, string uid)
-        {            
+        {
+            var query = from c in db.Courses
+                        where c.Subject == subject && c.Number == num
+                        join ca in db.Classes
+                        on c.CourseId equals ca.CourseId into cc
+                        join ac in db.AssignmentCategories
+                        on cc.ClassId equals ac.ClassId into ccac
+                        where cc.Name = category
+                        join a in db.Assignments
+                        on ccac.CategoryId equals a.CategoryId into b
+                        where ccac.Name = asgname
+                        join s in db.Submissions
+                        on b.AssignmentId equals s.AssignmentId into bs
+                        where bs.UId == uid
+                        select bs.SubmissionContents;
             return Content("");
         }
 
