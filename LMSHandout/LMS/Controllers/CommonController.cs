@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using LMS.Models.LMSModels;
@@ -121,8 +122,19 @@ namespace LMS.Controllers
         /// <param name="asgname">The name of the assignment in the category</param>
         /// <returns>The assignment contents</returns>
         public IActionResult GetAssignmentContents(string subject, int num, string season, int year, string category, string asgname)
-        {            
-            return Content("");
+        {
+            var query = from c in db.Courses
+                        where c.Subject == subject && c.Number == num
+                        join ca in db.Classes
+                        on c.CourseId equals ca.CourseId
+                        join ac in db.AssignmentCategories
+                        on ca.ClassId equals ac.ClassId
+                        where ac.Name == category
+                        join a in db.Assignments
+                        on ac.CategoryId equals a.CategoryId
+                        where a.Name == asgname
+                        select a.Contents;
+            return Content(query.FirstOrDefault() ?? "");
         }
 
 
@@ -145,18 +157,18 @@ namespace LMS.Controllers
             var query = from c in db.Courses
                         where c.Subject == subject && c.Number == num
                         join ca in db.Classes
-                        on c.CourseId equals ca.CourseId into cc
+                        on c.CourseId equals ca.CourseId
                         join ac in db.AssignmentCategories
-                        on cc.ClassId equals ac.ClassId into ccac
-                        where cc.Name = category
+                        on ca.ClassId equals ac.ClassId
+                        where ac.Name == category
                         join a in db.Assignments
-                        on ccac.CategoryId equals a.CategoryId into b
-                        where ccac.Name = asgname
+                        on ac.CategoryId equals a.CategoryId
+                        where ac.Name == asgname
                         join s in db.Submissions
-                        on b.AssignmentId equals s.AssignmentId into bs
-                        where bs.UId == uid
-                        select bs.SubmissionContents;
-            return Content("");
+                        on a.AssignmentId equals s.AssignmentId 
+                        where s.UId == uid
+                        select s.SubmissionContents;
+            return Content(query.FirstOrDefault() ?? "");
         }
 
 
@@ -177,8 +189,48 @@ namespace LMS.Controllers
         /// or an object containing {success: false} if the user doesn't exist
         /// </returns>
         public IActionResult GetUser(string uid)
-        {           
+        {
+            var queryS = from s in db.Students
+                        where s.UId == uid
+                        select new
+                        {
+                            fname = s.FirstName,
+                            lname = s.LastName,
+                            uid = s.UId,
+                            department = s.Subject
+                        };
+            var queryP = from p in db.Professors
+                         where p.UId == uid
+                         select new
+                         {
+                             fname = p.FirstName,
+                             lname = p.LastName,
+                             uid = p.UId,
+                             department = p.Subject
+                         };
+            var queryA = from a in db.Administrators
+                         where a.UId == uid
+                         select new
+                         {
+                             fname = a.FirstName,
+                             lname = a.LastName,
+                             uid = a.UId,
+                         };
+
+            if (queryS.Any())
+            {
+                return Json(queryS.FirstOrDefault());
+            }
+            else if (queryP.Any())
+            {
+                return Json(queryP.FirstOrDefault());
+            }
+            else if (queryA.Any())
+            {
+                return Json(queryA.FirstOrDefault());
+            }
             return Json(new { success = false });
+
         }
 
 
