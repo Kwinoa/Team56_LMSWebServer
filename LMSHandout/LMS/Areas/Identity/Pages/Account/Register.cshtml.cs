@@ -182,6 +182,13 @@ namespace LMS.Areas.Identity.Pages.Account
 
         /*******Begin code to modify********/
 
+        string GenerateUId()
+        {
+            
+
+            return "u0000000";
+        }
+
         /// <summary>
         /// Create a new user of the LMS with the specified information and add it to the database.
         /// Assigns the user a unique uID consisting of a 'u' followed by 7 digits.
@@ -200,7 +207,7 @@ namespace LMS.Areas.Identity.Pages.Account
                 {
                     FirstName = firstName,
                     LastName = lastName,
-                    Dob = DateOnly.FromDateTime(DOB)
+                    Dob = DateOnly.FromDateTime(DOB),
                 };
                 db.Administrators.Add( admin );
                 db.SaveChanges();
@@ -208,12 +215,19 @@ namespace LMS.Areas.Identity.Pages.Account
             }
             else if (role == "Professor")
             {
+                var query = from p in db.Professors
+                            orderby p.UId descending
+                            select p.UId;
+
+                var uid = "u" + (int.Parse(query.FirstOrDefault().Substring(1)) + 1).ToString("D7");
+
                 var professor = new Professor
                 {
                     FirstName = firstName,
                     LastName = lastName,
                     Dob = DateOnly.FromDateTime(DOB),
-                    Subject = departmentAbbrev
+                    Subject = departmentAbbrev,
+                    UId = GenerateUId()
                 };
                 db.Professors.Add( professor );
                 db.SaveChanges();
@@ -221,12 +235,19 @@ namespace LMS.Areas.Identity.Pages.Account
             }
             else if (role == "Student")
             {
+                var query = from s in db.Students
+                            orderby s.UId descending
+                            select s.UId;
+
+                var uid = "u" + (int.Parse(query.FirstOrDefault().Substring(1)) + 1).ToString("D7");
+
                 var student = new Student
                 {
                     FirstName = firstName,
                     LastName = lastName,
                     Dob = DateOnly.FromDateTime(DOB),
-                    Subject = departmentAbbrev
+                    Subject = departmentAbbrev,
+                    UId = GenerateUId()
                 };
                 db.Students.Add( student );
                 db.SaveChanges();
