@@ -195,15 +195,12 @@ namespace LMS.Areas.Identity.Pages.Account
         string CreateNewUser( string firstName, string lastName, DateTime DOB, string departmentAbbrev, string role )
         {
             var queryP = from p in db.Professors
-                        orderby p.UId descending
                         select p.UId;
 
             var queryS = from s in db.Students
-                        orderby s.UId descending
                         select s.UId;
 
             var queryA = from a in db.Administrators
-                         orderby a.UId descending
                          select a.UId;
 
             var uid = "u0000001";
