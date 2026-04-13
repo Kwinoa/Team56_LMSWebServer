@@ -59,9 +59,10 @@ namespace LMS.Controllers
             var query = from d in db.Departments
                          select new
                          {
-                             dname = d.Name,
                              subject = d.Subject,
+                             dname = d.Name,
                              courses = (from c in db.Courses
+                                        where c.Subject == d.Subject
                                         select new
                                         {
                                             number = c.Number,
@@ -92,6 +93,8 @@ namespace LMS.Controllers
                         where c.Subject == subject && c.Number == number
                         join ca in db.Classes
                         on c.CourseId equals ca.CourseId
+                        join p in db.Professors
+                        on ca.ProfessorUid equals p.UId
                         select new
                         {
                             season = ca.Semester,
@@ -99,12 +102,8 @@ namespace LMS.Controllers
                             location = ca.Location,
                             start = ca.Start,
                             end = ca.End,
-                            fname = (from p in db.Professors
-                                     where p.UId == ca.ProfessorUid
-                                     select p.FirstName),
-                            lname = (from p in db.Professors
-                                     where p.UId == ca.ProfessorUid
-                                     select p.LastName)
+                            fname = p.FirstName,
+                            lname = p.LastName
                         };
             return Json(query.ToArray());
         }

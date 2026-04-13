@@ -179,11 +179,11 @@ namespace LMS.Controllers
             }
             return Json(new { success = false });
         }
-        }
+        
+    }
 
 
         /*******End code to modify********/
-
-    }
+}
 
 
