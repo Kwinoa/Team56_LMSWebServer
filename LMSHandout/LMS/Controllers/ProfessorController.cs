@@ -252,18 +252,20 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>A JSON object containing {success = true/false} </returns>
         public IActionResult CreateAssignmentCategory(string subject, int num, string season, int year, string category, int catweight)
         {
-            if (!db.AssignmentCategories.Any(c => (c.Name == category)))
+            var classID = (from c in db.Courses
+                           where c.Subject == subject && c.Number == num
+                           join ca in db.Classes
+                           on c.CourseId equals ca.CourseId
+                           where ca.Semester == season && ca.Year == (uint)year
+                           select ca.ClassId).FirstOrDefault();
+
+            if (!db.AssignmentCategories.Any(c => (c.Name == category && c.ClassId == classID)))
             {
                 var newCategory = new AssignmentCategory
                 {
                     Name = category,
                     Weight = (short)catweight,
-                    ClassId = (from c in db.Courses
-                              where c.Subject == subject && c.Number == num
-                              join ca in db.Classes
-                              on c.CourseId equals ca.CourseId
-                              where ca.Semester == season && ca.Year == year
-                              select ca.ClassId).FirstOrDefault()
+                    ClassId = classID
                 };
                 
                 db.AssignmentCategories.Add(newCategory);
