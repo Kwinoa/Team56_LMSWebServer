@@ -104,22 +104,6 @@ namespace LMS.Controllers
                             end = ca.End,
                             fname =  p.FirstName,
                             lname = p.LastName
-                                     select p.FirstName),
-                            lname = (from p in db.Professors
-                                     where p.UId == ca.ProfessorUid
-                                     select p.LastName)
-                                     select p.FirstName),
-                            lname = (from p in db.Professors
-                                     where p.UId == ca.ProfessorUid
-                                     select p.LastName)
-                                     select p.FirstName),
-                            lname = (from p in db.Professors
-                                     where p.UId == ca.ProfessorUid
-                                     select p.LastName)
-                                     select p.FirstName),
-                            lname = (from p in db.Professors
-                                     where p.UId == ca.ProfessorUid
-                                     select p.LastName)
                         };
             return Json(query.ToArray());
         }
