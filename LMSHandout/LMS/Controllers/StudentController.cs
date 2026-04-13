@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using AspNetCoreGeneratedDocument;
 using LMS.Models.LMSModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -75,8 +76,23 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student</param>
         /// <returns>The JSON array</returns>
         public IActionResult GetMyClasses(string uid)
-        {           
-            return Json(null);
+        {
+            var query = from eg in db.EnrollmentGrades
+                        where eg.UId == uid
+                        join ca in db.Classes
+                        on eg.ClassId equals ca.ClassId
+                        join c in db.Courses
+                        on ca.CourseId equals c.CourseId
+                        select new
+                        {
+                            subject = c.Subject,
+                            number = c.Number,
+                            name = c.Name,
+                            season = ca.Semester,
+                            year = ca.Year,
+                            grade = eg.Grade
+                        };
+            return Json(query.ToArray());
         }
 
         /// <summary>
@@ -94,8 +110,26 @@ namespace LMS.Controllers
         /// <param name="uid"></param>
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInClass(string subject, int num, string season, int year, string uid)
-        {            
-            return Json(null);
+        {
+            var query = from c in db.Courses
+                        where c.Subject == subject && c.Number == num
+                        join ca in db.Classes
+                        on c.CourseId equals ca.CourseId
+                        where ca.Semester == season && ca.Year == year
+                        join ac in db.AssignmentCategories
+                        on ca.ClassId equals ac.ClassId
+                        join a in db.Assignments
+                        on ac.CategoryId equals a.CategoryId
+                        join s in db.Submissions
+                        on a.AssignmentId equals s.AssignmentId
+                        select new
+                        {
+                            aname = a.Name,
+                            cname = ac.Name,
+                            due = a.Due,
+                            score = s.Score
+                        };
+            return Json(query.ToArray());
         }
 
 
