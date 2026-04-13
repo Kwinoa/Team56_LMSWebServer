@@ -59,9 +59,10 @@ namespace LMS.Controllers
             var query = from d in db.Departments
                          select new
                          {
-                             dname = d.Name,
                              subject = d.Subject,
+                             dname = d.Name,
                              courses = (from c in db.Courses
+                                        where c.Subject == d.Subject
                                         select new
                                         {
                                             number = c.Number,
@@ -103,6 +104,22 @@ namespace LMS.Controllers
                             end = ca.End,
                             fname =  p.FirstName,
                             lname = p.LastName
+                                     select p.FirstName),
+                            lname = (from p in db.Professors
+                                     where p.UId == ca.ProfessorUid
+                                     select p.LastName)
+                                     select p.FirstName),
+                            lname = (from p in db.Professors
+                                     where p.UId == ca.ProfessorUid
+                                     select p.LastName)
+                                     select p.FirstName),
+                            lname = (from p in db.Professors
+                                     where p.UId == ca.ProfessorUid
+                                     select p.LastName)
+                                     select p.FirstName),
+                            lname = (from p in db.Professors
+                                     where p.UId == ca.ProfessorUid
+                                     select p.LastName)
                         };
             return Json(query.ToArray());
         }
