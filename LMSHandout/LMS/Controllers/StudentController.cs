@@ -115,19 +115,19 @@ namespace LMS.Controllers
                         where c.Subject == subject && c.Number == num
                         join ca in db.Classes
                         on c.CourseId equals ca.CourseId
-                        where ca.Semester == season && ca.Year == year
+                        where ca.Semester == season && ca.Year == (uint)year
                         join ac in db.AssignmentCategories
                         on ca.ClassId equals ac.ClassId
                         join a in db.Assignments
                         on ac.CategoryId equals a.CategoryId
-                        join s in db.Submissions
-                        on a.AssignmentId equals s.AssignmentId
                         select new
                         {
                             aname = a.Name,
                             cname = ac.Name,
                             due = a.Due,
-                            score = s.Score
+                            score = (from s in db.Submissions
+                                     where s.AssignmentId == a.AssignmentId && s.UId == uid
+                                     select s.Score).FirstOrDefault()
                         };
             return Json(query.ToArray());
         }
