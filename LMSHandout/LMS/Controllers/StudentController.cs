@@ -153,7 +153,30 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = true/false}</returns>
         public IActionResult SubmitAssignmentText(string subject, int num, string season, int year,
           string category, string asgname, string uid, string contents)
-        {           
+        {
+            var query = from c in db.Courses
+                        where c.Subject == subject && c.Number == num
+                        join ca in db.Classes
+                        on c.CourseId equals ca.CourseId
+                        where ca.Semester == season && ca.Year == year
+                        join ac in db.AssignmentCategories
+                        on ca.ClassId equals ac.ClassId
+                        where ac.Name == category
+                        join a in db.Assignments
+                        on ac.CategoryId equals a.CategoryId
+                        where a.Name == asgname
+                        join s in db.Submissions
+                        on a.AssignmentId equals s.AssignmentId
+                        where s.UId == uid
+                        select s;
+
+            var updatedSubmission = query.FirstOrDefault();
+            if (updatedSubmission != null)
+            {
+                updatedSubmission.SubmissionContents = contents;
+                db.SaveChanges();
+                return Json(new { success = true });
+            }
             return Json(new { success = false });
         }
 
