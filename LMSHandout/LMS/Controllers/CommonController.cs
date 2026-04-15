@@ -164,7 +164,7 @@ namespace LMS.Controllers
                         where ac.Name == category
                         join a in db.Assignments
                         on ac.CategoryId equals a.CategoryId
-                        where ac.Name == asgname
+                        where a.Name == asgname
                         join s in db.Submissions
                         on a.AssignmentId equals s.AssignmentId 
                         where s.UId == uid
