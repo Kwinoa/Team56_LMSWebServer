@@ -241,8 +241,25 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student</param>
         /// <returns>A JSON object containing a single field called "gpa" with the number value</returns>
         public IActionResult GetGPA(string uid)
-        {            
-            var query = from eg in db.
+        {
+            // Get all classes from student not "--"
+            // Get avergae grade point value
+            // for every assingment in 
+            var query = from eg in db.EnrollmentGrades
+                        where eg.UId == uid && eg.Grade != "--"
+                        join ca in db.Classes
+                        on eg.ClassId equals ca.ClassId
+                        join ac in db.AssignmentCategories
+                        on ca.ClassId equals ac.ClassId
+                        join a in db.Assignments
+                        on ac.CategoryId equals a.CategoryId
+                        join s in db.Submissions
+                        on a.AssignmentId equals s.AssignmentId
+                        select s.Score;
+
+            Console.WriteLine(Json(query));
+
+
             return Json(null);
         }
                 
