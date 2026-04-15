@@ -193,7 +193,38 @@ namespace LMS.Controllers
         /// false if the student is already enrolled in the class, true otherwise.</returns>
         public IActionResult Enroll(string subject, int num, string season, int year, string uid)
         {          
-            return Json(new { success = false});
+            var query = from c in db.Courses
+                        where c.Subject == subject && c.Number == num
+                        join ca in db.Classes
+                        on c.CourseId equals ca.CourseId
+                        where ca.Semester == season && ca.Year == year
+                        join eg in db.EnrollmentGrades
+                        on ca.ClassId equals eg.ClassId
+                        where eg.UId == uid
+                        select eg;
+           
+            if (query.Any())
+            {
+                return Json(new { success = false });
+            }
+            else
+            {
+                db.SaveChanges();
+                var classQuery = query.FirstOrDefault();
+                if (classQuery != null)
+                {
+                    var newEnrollmentGrade = new EnrollmentGrade
+                    {
+                        UId = uid,
+                        ClassId = classQuery.ClassId,
+                        Grade = "--"
+                    };
+                }
+                return Json(new { success = true });
+
+            }
+
+            
         }
 
 
@@ -211,6 +242,7 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing a single field called "gpa" with the number value</returns>
         public IActionResult GetGPA(string uid)
         {            
+            var query = from eg in db.
             return Json(null);
         }
                 
