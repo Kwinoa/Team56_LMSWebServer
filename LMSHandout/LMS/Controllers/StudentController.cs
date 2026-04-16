@@ -192,18 +192,24 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = {true/false}. 
         /// false if the student is already enrolled in the class, true otherwise.</returns>
         public IActionResult Enroll(string subject, int num, string season, int year, string uid)
-        {          
+        {
             var query = from c in db.Courses
                         where c.Subject == subject && c.Number == num
                         join ca in db.Classes
                         on c.CourseId equals ca.CourseId
                         where ca.Semester == season && ca.Year == year
-                        join eg in db.EnrollmentGrades
-                        on ca.ClassId equals eg.ClassId
-                        where eg.UId == uid
-                        select eg;
+                        join eg in db.EnrollmentGrades 
+                        on ca.ClassId equals eg.ClassId into enrollments
+
+                        from eg in enrollments.DefaultIfEmpty() // Left join to include classes with no enrollments
+                        where eg == null || eg.UId == uid
+                        select new
+                        {
+                            ClassId = ca.ClassId,   // need classID to enroll 
+                            Enrollment = eg
+                        };
            
-            if (query.Any())
+            if (query.Any(x => x.Enrollment != null && x.Enrollment.UId == uid))
             {
                 return Json(new { success = false });
             }
@@ -228,6 +234,61 @@ namespace LMS.Controllers
         }
 
 
+        private void CalculateGrade(uint classId, string uid)
+        {
+            var studentEnrollment = (from eg in db.EnrollmentGrades
+                                     where eg.ClassId == classId && eg.UId == uid
+                                     select eg).FirstOrDefault();
+            if (studentEnrollment == null)
+            {
+                return; // Student is not enrolled in this class
+            }
+
+            // Get all categories from this class
+            var categories = from ac in db.AssignmentCategories
+                             where ac.ClassId == classId
+                             select ac;
+            
+
+            // Iterate through category, getting each assignment 
+            foreach (var category in categories)
+            {
+                // Get all assingments in this category
+                var assignments = from a in db.Assignments
+                                  where a.CategoryId == category.CategoryId
+                                  select a;
+                if (!assignments.Any())
+                {
+                    continue; // No assignments in this category, skip 
+                }
+                else
+                {
+                    double score = 0.0;
+                    double totalPoints = 0.0;
+
+                    foreach( var assignment in assignments)
+                    {
+                        totalPoints += assignment.MaxPoints;
+
+                        //  Points earned / total points for assignment
+                        var submission = (from s in db.Submissions
+                                          where s.AssignmentId == assignment.AssignmentId && s.UId == uid
+                                            select s).FirstOrDefault();
+
+                        if (submission != null)
+                        {
+                            score += submission.Score;
+                        }
+
+                        if (totalPoints == 0)
+                        {
+                            continue; // Skip to avoid divide by zero
+                        }
+
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// Calculates a student's GPA
@@ -246,7 +307,17 @@ namespace LMS.Controllers
             // Get avergae grade point value
             // for every assingment in 
             var query = from eg in db.EnrollmentGrades
-                        where eg.UId == uid && eg.Grade != "--"
+                        where eg.UId == uid
+                        select eg.ClassId;  // Gets all classIDs for the student
+
+            foreach ( var classId in query)
+            {
+                CalculateGrade(classId, uid);
+            }
+
+
+
+                        && eg.Grade != "--"
                         join ca in db.Classes
                         on eg.ClassId equals ca.ClassId
                         join ac in db.AssignmentCategories
