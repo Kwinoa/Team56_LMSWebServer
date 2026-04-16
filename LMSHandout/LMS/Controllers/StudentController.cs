@@ -249,8 +249,11 @@ namespace LMS.Controllers
             var categories = from ac in db.AssignmentCategories
                              where ac.ClassId == classId
                              select ac;
-            
 
+            double weighted = 0;
+            double scorePercentage = 0;
+            double totalCatWeight = 0;
+            double totalWeightedScore = 0;
             // Iterate through categories, getting each assignment 
             foreach (var category in categories)
             {
@@ -258,41 +261,93 @@ namespace LMS.Controllers
                 var assignments = from a in db.Assignments
                                   where a.CategoryId == category.CategoryId
                                   select a;
-
                 if (!assignments.Any())
                 {
                     continue; // No assignments in this category, skip 
                 }
                 else
                 {
-                    double score = 0.0;
                     double totalPoints = 0.0;
+                    double maxPoints = 0.0;
 
-                    foreach( var assignment in assignments)
+                    foreach (var assignment in assignments)
                     {
-                        totalPoints += assignment.MaxPoints;
-
                         //  Points earned / total points for assignment
                         var submission = (from s in db.Submissions
                                           where s.AssignmentId == assignment.AssignmentId && s.UId == uid
-                                            select s).FirstOrDefault();
+                                          select s).FirstOrDefault();
+             
 
                         if (submission != null)
                         {
-                            score += submission.Score;  // Get the object's score and add to running score count
+                            totalPoints += submission.Score;
+                            maxPoints += assignment.MaxPoints;
                         }
 
                         if (totalPoints == 0)
                         {
-                            continue; // Skip to avoid divide by zero
+                            continue; // Skip to avoid divide +by zero
                         }
 
-                        double scorePercentage = score / totalPoints;
-
-
                     }
+                    scorePercentage = totalPoints / maxPoints; // total for all assignments
+                    weighted = scorePercentage * category.Weight; // weighted total for all assignments
+                    
                 }
+                totalCatWeight += category.Weight; // weighted totals for all categories
+                
             }
+            totalWeightedScore += weighted;
+            var grade = totalWeightedScore * (100 / totalCatWeight);
+            if (grade >= 0.93 && grade < 1.0)
+            {
+                studentEnrollment.Grade = "A";
+            }
+            else if (grade >= .9 && grade < .93)
+            {
+                studentEnrollment.Grade = "A-";
+            }
+            else if (grade >= .87 && grade < .9)
+            {
+                studentEnrollment.Grade = "B+";
+            }
+            else if (grade >= .83 && grade < .87)
+            {
+                studentEnrollment.Grade = "B";
+            }
+            else if (grade >= .8 && grade < .83)
+            {
+                studentEnrollment.Grade = "B-";
+            }
+            else if (grade >= .77 && grade < .8)
+            {
+                studentEnrollment.Grade = "C+";
+            }
+            else if (grade >= .73 && grade < .77)
+            {
+                studentEnrollment.Grade = "C";
+            }
+            else if (grade >= .7 && grade < .73)
+            {
+                studentEnrollment.Grade = "C-";
+            }
+            else if (grade >= .67 && grade < .7)
+            {
+                studentEnrollment.Grade = "D+";
+            }
+            else if (grade >= .63 && grade < .67)
+            {
+                studentEnrollment.Grade = "D";
+            }
+            else if (grade >= .6 && grade < .63)
+            {
+                studentEnrollment.Grade = "D-";
+            }
+            else
+            {
+                studentEnrollment.Grade = "E";
+            }
+            db.SaveChanges();
         }
 
         /// <summary>
@@ -329,27 +384,61 @@ namespace LMS.Controllers
                 return Json(new { GPA = 0.0 });
             }
 
+            double gradePoints = 0.0;
             foreach (var grade in grades)
             {
                 // Convert letter grade to grade points and calculate GPA
+                if (grade == "A")
+                {
+                    gradePoints += 4.0;
+                }
+                else if (grade == "A-")
+                {
+                    gradePoints += 3.7;
+                }
+                else if (grade == "B+")
+                {
+                    gradePoints += 3.3;
+                }
+                else if (grade == "B")
+                {
+                    gradePoints += 3.0;
+                }
+                else if (grade == "B-")
+                {
+                    gradePoints += 2.7;
+                }
+                else if (grade == "C+")
+                {
+                    gradePoints += 2.3;
+                }
+                else if (grade == "C")
+                {
+                    gradePoints += 2.0;
+                }
+                else if (grade == "C-")
+                {
+                    gradePoints += 1.7;
+                }
+                else if (grade == "D+")
+                {
+                    gradePoints += 1.3;
+                }
+                else if (grade == "D")
+                {
+                    gradePoints += 1.0;
+                }
+                else if (grade == "D-")
+                {
+                    gradePoints += 0.7;
+                }
+                else
+                {
+                    gradePoints += 0.0;
+                }
             }
-
-
-            //            && eg.Grade != "--"
-            //            join ca in db.Classes
-            //            on eg.ClassId equals ca.ClassId
-            //            join ac in db.AssignmentCategories
-            //            on ca.ClassId equals ac.ClassId
-            //            join a in db.Assignments
-            //            on ac.CategoryId equals a.CategoryId
-            //            join s in db.Submissions
-            //            on a.AssignmentId equals s.AssignmentId
-            //            select s.Score;
-
-            //Console.WriteLine(Json(query));
-
-
-            return Json(new {GPA = 0.0});
+            double gpa = gradePoints / grades.Count();
+            return Json(new { GPA = gpa });
         }
                 
         /*******End code to modify********/
