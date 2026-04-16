@@ -90,7 +90,7 @@ namespace LMS.Controllers
                             name = c.Name,
                             season = ca.Semester,
                             year = ca.Year,
-                            grade = eg.Grade
+                            grade = eg.Grade ?? "--"
                         };
             return Json(query.ToArray());
         }
@@ -215,7 +215,6 @@ namespace LMS.Controllers
             }
             else
             {
-                db.SaveChanges();
                 var classQuery = query.FirstOrDefault();
                 if (classQuery != null)
                 {
@@ -225,15 +224,17 @@ namespace LMS.Controllers
                         ClassId = classQuery.ClassId,
                         Grade = "--"
                     };
+
+                    db.EnrollmentGrades.Add(newEnrollmentGrade);
+                    db.SaveChanges();
+                    return Json(new { success = true });
                 }
-                return Json(new { success = true });
 
+                return Json(new { success = false });
             }
-
-            
         }
 
-
+        // Helper method to calculate a student's grade in a class
         private void CalculateGrade(uint classId, string uid)
         {
             var studentEnrollment = (from eg in db.EnrollmentGrades
@@ -250,13 +251,14 @@ namespace LMS.Controllers
                              select ac;
             
 
-            // Iterate through category, getting each assignment 
+            // Iterate through categories, getting each assignment 
             foreach (var category in categories)
             {
                 // Get all assingments in this category
                 var assignments = from a in db.Assignments
                                   where a.CategoryId == category.CategoryId
                                   select a;
+
                 if (!assignments.Any())
                 {
                     continue; // No assignments in this category, skip 
@@ -277,13 +279,16 @@ namespace LMS.Controllers
 
                         if (submission != null)
                         {
-                            score += submission.Score;
+                            score += submission.Score;  // Get the object's score and add to running score count
                         }
 
                         if (totalPoints == 0)
                         {
                             continue; // Skip to avoid divide by zero
                         }
+
+                        double scorePercentage = score / totalPoints;
+
 
                     }
                 }
@@ -306,32 +311,45 @@ namespace LMS.Controllers
             // Get all classes from student not "--"
             // Get avergae grade point value
             // for every assingment in 
-            var query = from eg in db.EnrollmentGrades
+            var classIDs = from eg in db.EnrollmentGrades
                         where eg.UId == uid
                         select eg.ClassId;  // Gets all classIDs for the student
 
-            foreach ( var classId in query)
+            foreach ( var classId in classIDs)
             {
                 CalculateGrade(classId, uid);
             }
 
+            var grades = from eg in db.EnrollmentGrades
+                        where eg.UId == uid && eg.Grade != "--"
+                        select eg.Grade;
+
+            if (!grades.Any())
+            {
+                return Json(new { GPA = 0.0 });
+            }
+
+            foreach (var grade in grades)
+            {
+                // Convert letter grade to grade points and calculate GPA
+            }
 
 
-                        && eg.Grade != "--"
-                        join ca in db.Classes
-                        on eg.ClassId equals ca.ClassId
-                        join ac in db.AssignmentCategories
-                        on ca.ClassId equals ac.ClassId
-                        join a in db.Assignments
-                        on ac.CategoryId equals a.CategoryId
-                        join s in db.Submissions
-                        on a.AssignmentId equals s.AssignmentId
-                        select s.Score;
+            //            && eg.Grade != "--"
+            //            join ca in db.Classes
+            //            on eg.ClassId equals ca.ClassId
+            //            join ac in db.AssignmentCategories
+            //            on ca.ClassId equals ac.ClassId
+            //            join a in db.Assignments
+            //            on ac.CategoryId equals a.CategoryId
+            //            join s in db.Submissions
+            //            on a.AssignmentId equals s.AssignmentId
+            //            select s.Score;
 
-            Console.WriteLine(Json(query));
+            //Console.WriteLine(Json(query));
 
 
-            return Json(null);
+            return Json(new {GPA = 0.0});
         }
                 
         /*******End code to modify********/
