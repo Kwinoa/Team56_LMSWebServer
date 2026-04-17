@@ -428,7 +428,7 @@ namespace LMS_CustomIdentity.Controllers
                                   select ac.CategoryId).FirstOrDefault()
                 };
 
-            var studentQuery = from c in db.Courses
+            var studentQuery = (from c in db.Courses
                                where c.Subject == subject && c.Number == num
                                join ca in db.Classes
                                on c.CourseId equals ca.CourseId
@@ -437,7 +437,7 @@ namespace LMS_CustomIdentity.Controllers
                                on ca.ClassId equals eg.ClassId
                                join s in db.Students
                                on eg.UId equals s.UId
-                               select s.UId;
+                               select s.UId).ToList();
 
             foreach (var uid in studentQuery)
             {
@@ -542,27 +542,21 @@ namespace LMS_CustomIdentity.Controllers
                         join s in db.Submissions
                         on a.AssignmentId equals s.AssignmentId
                         where s.UId == uid
-                        select s;
+                        select new { Submission = s, ClassId = ca.ClassId };
 
-            var updatedSubmission = query.FirstOrDefault();
-            if (updatedSubmission != null)
+            var result = query.FirstOrDefault();
+            if (result == null)
             {
-                updatedSubmission.Score = (short)score;
-
-                var classIDs = (from eg in db.EnrollmentGrades
-                                where eg.UId == uid
-                                select eg.ClassId).ToList();  // ADD .ToList() Here to fix the connection error
-
-                foreach (var classId in classIDs)
-                {
-                    // Pass db down to CalculateGrade
-                    CalculateGrade(classId, uid);
-                }
-
-                db.SaveChanges();
-                return Json(new { success = true });
+                return Json(new { success = false });
             }
-            return Json(new { success = false });
+
+            result.Submission.Score = (short)score;
+            db.SaveChanges(); 
+
+            // Use the queried ClassId to update the overall grade
+            CalculateGrade(result.ClassId, uid);
+
+            return Json(new { success = true });
         }
 
 

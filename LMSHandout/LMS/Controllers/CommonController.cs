@@ -67,7 +67,7 @@ namespace LMS.Controllers
                                         {
                                             number = c.Number,
                                             cname = c.Name
-                                        })
+                                        }).ToArray()
                          };
 
             return Json(query.ToArray());
@@ -153,7 +153,6 @@ namespace LMS.Controllers
         /// <returns>The submission text</returns>
         public IActionResult GetSubmissionText(string subject, int num, string season, int year, string category, string asgname, string uid)
         {
-            // TODO: FIX (NOT RETURNING THE SUBMISSION TEXT)
             var query = from c in db.Courses
                         where c.Subject == subject && c.Number == num
                         join ca in db.Classes

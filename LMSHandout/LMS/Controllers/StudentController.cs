@@ -271,7 +271,14 @@ namespace LMS.Controllers
                              where ac.ClassId == classId
                              select ac).ToList(); // ADD .ToList() Here
 
-            double weighted = 0;
+            if (!categories.Any())
+            {
+                studentEnrollment.Grade = "--";
+                db.SaveChanges();
+                return;
+            }
+
+            double weighted = 0.0;
             double scorePercentage = 0;
             double totalCatWeight = 0;
             double totalWeightedScore = 0;
@@ -289,11 +296,12 @@ namespace LMS.Controllers
                 }
                 else
                 {
-                    double totalPoints = 0.0;
-                    double maxPoints = 0.0;
+                double totalPoints = 0.0;
+                double maxPoints = 0.0;
 
                     foreach (var assignment in assignments)
                     {
+                        maxPoints += assignment.MaxPoints;
                         //  Points earned / total points for assignment
                         var submission = (from s in db.Submissions
                                           where s.AssignmentId == assignment.AssignmentId && s.UId == uid
@@ -303,7 +311,6 @@ namespace LMS.Controllers
                         if (submission != null)
                         {
                             totalPoints += submission.Score;
-                            maxPoints += assignment.MaxPoints;
                         }
 
                         if (totalPoints == 0)
@@ -313,14 +320,14 @@ namespace LMS.Controllers
 
                     }
                     scorePercentage = totalPoints / maxPoints; // total for all assignments
-                    weighted = scorePercentage * category.Weight; // weighted total for all assignments
+                    weighted += scorePercentage * category.Weight; // weighted total for all assignments
+                    totalCatWeight += category.Weight; // weighted totals for all categories
+
                     
-                }
-                totalCatWeight += category.Weight; // weighted totals for all categories
-                
+                }               
             }
             totalWeightedScore += weighted;
-            var grade = totalWeightedScore * (100 / totalCatWeight);
+            double grade = (totalWeightedScore) * (100.0 / totalCatWeight) / 100.0;
             if (grade >= 0.93 && grade < 1.0)
             {
                 studentEnrollment.Grade = "A";
