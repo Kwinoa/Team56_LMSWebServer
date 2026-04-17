@@ -154,26 +154,46 @@ namespace LMS.Controllers
         public IActionResult SubmitAssignmentText(string subject, int num, string season, int year,
           string category, string asgname, string uid, string contents)
         {
-            var query = from c in db.Courses
-                        where c.Subject == subject && c.Number == num
-                        join ca in db.Classes
-                        on c.CourseId equals ca.CourseId
-                        where ca.Semester == season && ca.Year == year
-                        join ac in db.AssignmentCategories
-                        on ca.ClassId equals ac.ClassId
-                        where ac.Name == category
-                        join a in db.Assignments
-                        on ac.CategoryId equals a.CategoryId
-                        where a.Name == asgname
-                        join s in db.Submissions
-                        on a.AssignmentId equals s.AssignmentId
-                        where s.UId == uid
-                        select s;
+            var assignment = (from c in db.Courses
+                         where c.Subject == subject && c.Number == num
+                         join ca in db.Classes
+                         on c.CourseId equals ca.CourseId
+                         where ca.Semester == season && ca.Year == year
+                         join ac in db.AssignmentCategories
+                         on ca.ClassId equals ac.ClassId
+                         where ac.Name == category
+                         join a in db.Assignments
+                         on ac.CategoryId equals a.CategoryId
+                         where a.Name == asgname
+                         select a).FirstOrDefault();
 
-            var updatedSubmission = query.FirstOrDefault();
-            if (updatedSubmission != null)
+
+            if (assignment == null)
+            {
+                return Json(new { success = false });
+            }
+            var updatedSubmission = db.Submissions.FirstOrDefault(s => s.AssignmentId == assignment.AssignmentId && s.UId == uid);
+
+            if (updatedSubmission == null)
+            {
+                updatedSubmission = new Submission
+                {
+                    AssignmentId = assignment.AssignmentId,
+                    UId = uid,
+                    SubmissionContents = contents,
+                    Time = DateTime.Now,
+                    Score = 0,
+                };
+            
+                db.Submissions.Add(updatedSubmission);
+                db.SaveChanges();
+                return Json(new { success = true });
+
+            }
+            else if( updatedSubmission != null)
             {
                 updatedSubmission.SubmissionContents = contents;
+                updatedSubmission.Time = DateTime.Now;
                 db.SaveChanges();
                 return Json(new { success = true });
             }
@@ -235,20 +255,21 @@ namespace LMS.Controllers
         }
 
         // Helper method to calculate a student's grade in a class
-        private void CalculateGrade(uint classId, string uid)
+        public void CalculateGrade(uint classId, string uid)
         {
             var studentEnrollment = (from eg in db.EnrollmentGrades
                                      where eg.ClassId == classId && eg.UId == uid
                                      select eg).FirstOrDefault();
+
             if (studentEnrollment == null)
             {
                 return; // Student is not enrolled in this class
             }
 
             // Get all categories from this class
-            var categories = from ac in db.AssignmentCategories
+            var categories = (from ac in db.AssignmentCategories
                              where ac.ClassId == classId
-                             select ac;
+                             select ac).ToList(); // ADD .ToList() Here
 
             double weighted = 0;
             double scorePercentage = 0;
@@ -258,9 +279,10 @@ namespace LMS.Controllers
             foreach (var category in categories)
             {
                 // Get all assingments in this category
-                var assignments = from a in db.Assignments
-                                  where a.CategoryId == category.CategoryId
-                                  select a;
+                var assignments = (from a in db.Assignments
+                                    where a.CategoryId == category.CategoryId
+                                    select a).ToList();  // ADD .ToList() Here
+
                 if (!assignments.Any())
                 {
                     continue; // No assignments in this category, skip 
@@ -350,6 +372,19 @@ namespace LMS.Controllers
             db.SaveChanges();
         }
 
+        //public void UpdateGrade(string uid)
+        //{
+        //    var classIDs = (from eg in db.EnrollmentGrades
+        //                    where eg.UId == uid
+        //                    select eg.ClassId).ToList();  // ADD .ToList() Here to fix the connection error
+
+        //    foreach (var classId in classIDs)
+        //    {
+        //        // Pass db down to CalculateGrade
+        //        CalculateGrade(classId, uid, db);
+        //    }
+        //}
+
         /// <summary>
         /// Calculates a student's GPA
         /// A student's GPA is determined by the grade-point representation of the average grade in all their classes.
@@ -366,18 +401,18 @@ namespace LMS.Controllers
             // Get all classes from student not "--"
             // Get avergae grade point value
             // for every assingment in 
-            var classIDs = from eg in db.EnrollmentGrades
+            var classIDs = (from eg in db.EnrollmentGrades
                         where eg.UId == uid
-                        select eg.ClassId;  // Gets all classIDs for the student
+                        select eg.ClassId).ToList();  // ADD .ToList() Here to fix the connection error
 
             foreach ( var classId in classIDs)
             {
                 CalculateGrade(classId, uid);
             }
 
-            var grades = from eg in db.EnrollmentGrades
+            var grades = (from eg in db.EnrollmentGrades
                         where eg.UId == uid && eg.Grade != "--"
-                        select eg.Grade;
+                        select eg.Grade).ToList();    // Added .ToList() here for performance
 
             if (!grades.Any())
             {
@@ -437,7 +472,7 @@ namespace LMS.Controllers
                     gradePoints += 0.0;
                 }
             }
-            double gpa = gradePoints / grades.Count();
+            double gpa = gradePoints / grades.Count; // Changed Count() to Count since it's a List now
             return Json(new { GPA = gpa });
         }
                 
