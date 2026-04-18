@@ -266,69 +266,57 @@ namespace LMS.Controllers
                 return; // Student is not enrolled in this class
             }
 
-            // Get all categories from this class
             var categories = (from ac in db.AssignmentCategories
-                             where ac.ClassId == classId
-                             select ac).ToList(); // ADD .ToList() Here
+                              where ac.ClassId == classId
+                              select ac).ToList();
 
-            if (!categories.Any())
-            {
-                studentEnrollment.Grade = "--";
-                db.SaveChanges();
-                return;
-            }
-
-            double weighted = 0.0;
-            double scorePercentage = 0;
             double totalCatWeight = 0;
             double totalWeightedScore = 0;
-            // Iterate through categories, getting each assignment 
+
             foreach (var category in categories)
             {
-                // Get all assingments in this category
                 var assignments = (from a in db.Assignments
-                                    where a.CategoryId == category.CategoryId
-                                    select a).ToList();  // ADD .ToList() Here
+                                   where a.CategoryId == category.CategoryId
+                                   select a).ToList();
 
                 if (!assignments.Any())
                 {
-                    continue; // No assignments in this category, skip 
+                    continue;
                 }
                 else
                 {
-                double totalPoints = 0.0;
-                double maxPoints = 0.0;
+                    double totalPoints = 0.0;
+                    double maxPoints = 0.0;
 
                     foreach (var assignment in assignments)
                     {
-                        maxPoints += assignment.MaxPoints;
-                        //  Points earned / total points for assignment
                         var submission = (from s in db.Submissions
                                           where s.AssignmentId == assignment.AssignmentId && s.UId == uid
                                           select s).FirstOrDefault();
-             
 
                         if (submission != null)
                         {
-                            totalPoints += submission.Score;
+                            totalPoints += submission?.Score ?? 0;
+                            maxPoints += assignment.MaxPoints;
                         }
 
-                        if (totalPoints == 0)
+                        if (maxPoints > 0)
                         {
-                            continue; // Skip to avoid divide +by zero
+                            double catPercentage = totalPoints / maxPoints;
+                            totalWeightedScore += catPercentage * category.Weight;
+                            totalCatWeight += category.Weight;
                         }
 
                     }
-                    scorePercentage = totalPoints / maxPoints; // total for all assignments
-                    weighted += scorePercentage * category.Weight; // weighted total for all assignments
-                    totalCatWeight += category.Weight; // weighted totals for all categories
 
-                    
-                }               
+                    if (totalCatWeight == 0) return;
+
+                }
+
             }
-            totalWeightedScore += weighted;
-            double grade = (totalWeightedScore) * (100.0 / totalCatWeight) / 100.0;
-            if (grade >= 0.93 && grade < 1.0)
+            double grade = totalWeightedScore * (100 / totalCatWeight);
+
+            if (grade >= 0.93)
             {
                 studentEnrollment.Grade = "A";
             }
@@ -372,12 +360,13 @@ namespace LMS.Controllers
             {
                 studentEnrollment.Grade = "D-";
             }
-            else
+            else if (grade < .6)
             {
                 studentEnrollment.Grade = "E";
             }
             db.SaveChanges();
         }
+
 
         //public void UpdateGrade(string uid)
         //{

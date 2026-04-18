@@ -289,26 +289,22 @@ namespace LMS_CustomIdentity.Controllers
                 return; // Student is not enrolled in this class
             }
 
-            // Get all categories from this class
             var categories = (from ac in db.AssignmentCategories
                               where ac.ClassId == classId
-                              select ac).ToList(); // ADD .ToList() Here
+                              select ac).ToList(); 
 
-            double weighted = 0;
-            double scorePercentage = 0;
             double totalCatWeight = 0;
             double totalWeightedScore = 0;
-            // Iterate through categories, getting each assignment 
+
             foreach (var category in categories)
             {
-                // Get all assingments in this category
                 var assignments = (from a in db.Assignments
                                    where a.CategoryId == category.CategoryId
-                                   select a).ToList();  // ADD .ToList() Here
+                                   select a).ToList(); 
 
                 if (!assignments.Any())
                 {
-                    continue; // No assignments in this category, skip 
+                    continue; 
                 }
                 else
                 {
@@ -317,34 +313,33 @@ namespace LMS_CustomIdentity.Controllers
 
                     foreach (var assignment in assignments)
                     {
-                        //  Points earned / total points for assignment
                         var submission = (from s in db.Submissions
                                           where s.AssignmentId == assignment.AssignmentId && s.UId == uid
                                           select s).FirstOrDefault();
 
-
                         if (submission != null)
                         {
-                            totalPoints += submission.Score;
+                            totalPoints += submission?.Score ?? 0;
                             maxPoints += assignment.MaxPoints;
                         }
 
-                        if (totalPoints == 0)
+                        if (maxPoints > 0)
                         {
-                            continue; // Skip to avoid divide +by zero
+                            double catPercentage = totalPoints / maxPoints;
+                            totalWeightedScore += catPercentage * category.Weight;
+                            totalCatWeight += category.Weight;
                         }
 
                     }
-                    scorePercentage = totalPoints / maxPoints; // total for all assignments
-                    weighted = scorePercentage * category.Weight; // weighted total for all assignments
+
+                    if (totalCatWeight == 0) return;
 
                 }
-                totalCatWeight += category.Weight; // weighted totals for all categories
 
             }
-            totalWeightedScore += weighted;
-            var grade = totalWeightedScore * (100 / totalCatWeight);
-            if (grade >= 0.93 && grade < 1.0)
+            double grade = totalWeightedScore * (100/ totalCatWeight);
+
+            if (grade >= 0.93)
             {
                 studentEnrollment.Grade = "A";
             }
@@ -388,11 +383,11 @@ namespace LMS_CustomIdentity.Controllers
             {
                 studentEnrollment.Grade = "D-";
             }
-            else
+            else if(grade < .6)
             {
                 studentEnrollment.Grade = "E";
             }
-            db.SaveChanges();
+                db.SaveChanges();
         }
 
         /// <summary>
@@ -409,7 +404,13 @@ namespace LMS_CustomIdentity.Controllers
         /// <param name="asgcontents">The contents of the new assignment</param>
         /// <returns>A JSON object containing success = true/false</returns>
         public IActionResult CreateAssignment(string subject, int num, string season, int year, string category, string asgname, int asgpoints, DateTime asgdue, string asgcontents)
-        {       
+        {
+            var classID = (from c in db.Courses
+                           where c.Subject == subject && c.Number == num
+                           join ca in db.Classes on c.CourseId equals ca.CourseId
+                           where ca.Semester == season && ca.Year == (uint)year
+                           select ca.ClassId).FirstOrDefault();
+
             var newAssignment = new Assignment
                 {
                     Name = asgname,
@@ -417,52 +418,24 @@ namespace LMS_CustomIdentity.Controllers
                     Due = asgdue,
                     MaxPoints = (short)asgpoints,
 
-                    CategoryId = (from c in db.Courses
-                                  where c.Subject == subject && c.Number == num
-                                  join ca in db.Classes
-                                  on c.CourseId equals ca.CourseId
-                                  where ca.Semester == season && ca.Year == year
-                                  join ac in db.AssignmentCategories
-                                  on ca.ClassId equals ac.ClassId
-                                  where ac.Name == category 
+                    CategoryId = (from ac in db.AssignmentCategories
+                                  where ac.ClassId == classID && ac.Name == category
                                   select ac.CategoryId).FirstOrDefault()
                 };
 
-            var studentQuery = (from c in db.Courses
-                               where c.Subject == subject && c.Number == num
-                               join ca in db.Classes
-                               on c.CourseId equals ca.CourseId
-                               where ca.Semester == season && ca.Year == year
-                               join eg in db.EnrollmentGrades
-                               on ca.ClassId equals eg.ClassId
-                               join s in db.Students
-                               on eg.UId equals s.UId
-                               select s.UId).ToList();
+            db.Assignments.Add(newAssignment);
+            db.SaveChanges();
 
-            foreach (var uid in studentQuery)
+            var studentUids = (from eg in db.EnrollmentGrades
+                               where eg.ClassId == classID
+                               select eg.UId).ToList();
+
+            foreach (var uid in studentUids)
             {
-                var classIDs = (from eg in db.EnrollmentGrades
-                                where eg.UId == uid
-                                select eg.ClassId).ToList();  // ADD .ToList() Here to fix the connection error
-
-                foreach (var classId in classIDs)
-                {
-                    // Pass db down to CalculateGrade
-                    var cIDs = (from eg in db.EnrollmentGrades
-                                where eg.UId == uid
-                                select eg.ClassId).ToList();  // ADD .ToList() Here to fix the connection error
-
-                    foreach (var cId in classIDs)
-                    {
-                        // Pass db down to CalculateGrade
-                        CalculateGrade(cId, uid);
-                    }
-                }
+                CalculateGrade(classID, uid);                 
             }
 
-            db.Assignments.Add(newAssignment);
-                db.SaveChanges();
-                return Json(new { success = true });
+            return Json(new { success = true });
          }
    
         
