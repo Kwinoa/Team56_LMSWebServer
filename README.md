@@ -134,7 +134,7 @@ The project provided practical experience designing a database-backed web applic
 
 ## Author
 
-Sinahi Leon  
+Sinahi Leon and Kalina Tran
 B.S. Computer Science — University of Utah
 
 Developed collaboratively with a project teammate.
